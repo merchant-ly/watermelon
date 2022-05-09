@@ -191,7 +191,7 @@ defmodule Watermelon.Case do
           def unquote(name)(context) do
             Watermelon.Case.run_steps(
               unquote(Macro.escape(steps)),
-              context,
+              Map.put(context, :scenario_name, unquote(Macro.escape(scenario_name))),
               unquote(step_modules)
             )
           end
@@ -209,15 +209,32 @@ defmodule Watermelon.Case do
 
   @doc false
   def run_steps(steps, context, modules) do
-    Enum.reduce(steps, context, fn %{text: text} = step, context ->
-      modules
-      |> Enum.find_value(:error, &step(&1, step, context))
-      |> case do
-        {_, {:ok, context}} -> context
-        {_, other} -> raise "Unexpected return value `#{inspect(other)}` in step `#{text}`"
-        :error -> raise "Definition for `#{text}` not found"
-      end
-    end)
+    {context, _cursor} =
+      Enum.reduce(steps, {context, 0}, fn step, {context, cursor} ->
+        modules
+        |> Enum.find_value(:missing_definition, fn module ->
+          try do
+            step(module, step, context)
+          rescue
+            e in ExUnit.AssertionError ->
+              raise_error(context.scenario_name, steps, cursor, ExUnit.AssertionError.message(e))
+            e ->
+              raise_error(context.scenario_name, steps, cursor, Exception.message(e))
+          end
+        end)
+        |> case do
+          {_, {:ok, context}} ->
+            {context, cursor + 1}
+
+          {_, other} ->
+            raise_error(context.scenario_name, steps, cursor, "Unexpected return value `#{inspect(other)}`")
+
+          :missing_definition ->
+            raise_error(context.scenario_name, steps, cursor, "Definition for \"#{step.text}\" not found")
+        end
+      end)
+
+    context
   end
 
   defp step(module, step, context) do
@@ -225,5 +242,45 @@ defmodule Watermelon.Case do
       {:ok, _} = return -> return
       :error -> false
     end
+  end
+
+  defp raise_error(scenario_name, steps, cursor, error_msg) do
+    {previous, [current | next]} =
+      steps
+      |> Enum.map(& String.pad_leading(get_step_type(&1), 5, " ") <> " " <> &1.text)
+      |> Enum.split(cursor)
+
+    printable_steps =
+      List.flatten([
+        Enum.map(previous, & green("✓") <> "\s\t" <> &1),
+        red("✕") <> "\s\t" <> red(current),
+        Enum.map(next, & "⊘\s\t" <> &1)
+      ])
+      |> Enum.join("\n")
+
+    str = IO.ANSI.reset() <> printable_steps
+    delimiter = IO.ANSI.reset() <> "---"
+
+    raise """
+    #{error_msg}
+
+    #{delimiter}
+    \s\sScenario: #{scenario_name}
+    #{str}
+    """
+  end
+
+  defp color(text, color), do: color <> text <> IO.ANSI.reset()
+  defp green(text), do: color(text, IO.ANSI.green())
+  defp red(text), do: color(text, IO.ANSI.red())
+
+  defp get_step_type(step) do
+    [step_type | _] =
+      Atom.to_string(step.__struct__)
+      |> String.split(".")
+      |> Enum.reverse()
+      |> Enum.map(&String.capitalize/1)
+
+    step_type
   end
 end
