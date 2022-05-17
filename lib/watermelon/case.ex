@@ -216,10 +216,10 @@ defmodule Watermelon.Case do
           try do
             step(module, step, context)
           rescue
-            e in ExUnit.AssertionError ->
-              raise_error(context.scenario_name, steps, cursor, ExUnit.AssertionError.message(e))
             e ->
-              raise_error(context.scenario_name, steps, cursor, Exception.message(e))
+              msg = get_error_message(e)
+
+              raise_error(context.scenario_name, steps, cursor, msg, __STACKTRACE__)
           end
         end)
         |> case do
@@ -237,6 +237,7 @@ defmodule Watermelon.Case do
     context
   end
 
+
   defp step(module, step, context) do
     case module.apply_step(step, context) do
       {:ok, _} = return -> return
@@ -244,7 +245,17 @@ defmodule Watermelon.Case do
     end
   end
 
-  defp raise_error(scenario_name, steps, cursor, error_msg) do
+  defp get_error_message(%mod{} = e) do
+    try do
+      mod.message(e)
+    rescue
+      _ -> Exception.message(e)
+    end
+  end
+
+  defp get_error_message(e), do: Exception.message(e)
+
+  defp raise_error(scenario_name, steps, cursor, error_msg, stacktrace \\ []) do
     {previous, [current | next]} =
       steps
       |> Enum.map(& String.pad_leading(get_step_type(&1), 5, " ") <> " " <> &1.text)
@@ -261,13 +272,15 @@ defmodule Watermelon.Case do
     str = IO.ANSI.reset() <> printable_steps
     delimiter = IO.ANSI.reset() <> "---"
 
-    raise """
+    msg = """
     #{error_msg}
 
     #{delimiter}
     \s\sScenario: #{scenario_name}
     #{str}
     """
+
+    reraise RuntimeError, msg, stacktrace
   end
 
   defp color(text, color), do: color <> text <> IO.ANSI.reset()
