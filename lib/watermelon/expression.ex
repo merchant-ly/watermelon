@@ -262,18 +262,18 @@ defmodule Watermelon.Expression do
   defp float("." <> frac), do: String.to_float("0." <> frac)
   defp float("-." <> frac), do: String.to_float("-0." <> frac)
   defp float(float), do: String.to_float(float)
+end
 
-  defimpl Inspect do
-    import Inspect.Algebra
+defimpl Inspect, for: Watermelon.Expression do
+  import Inspect.Algebra
 
-    def inspect(expression, opts) do
-      text =
-        case expression.match do
-          %Regex{} = regex -> to_doc(regex, opts)
-          _ -> expression.raw
-        end
+  def inspect(expression, opts) do
+    text =
+      case expression.match do
+        %Regex{} = regex -> to_doc(regex, opts)
+        _ -> expression.raw
+      end
 
-      concat(["#Watermelon.Expression<", text, ">"])
-    end
+    concat(["#Watermelon.Expression<", text, ">"])
   end
 end
