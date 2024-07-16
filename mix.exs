@@ -23,7 +23,7 @@ defmodule Watermelon.MixProject do
   end
 
   defp version do
-    case :file.consult('hex_metadata.config') do
+    case :file.consult(~c"hex_metadata.config") do
       {:ok, data} ->
         {"version", version} = List.keyfind(data, "version", 0)
         version

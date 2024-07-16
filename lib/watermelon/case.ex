@@ -182,7 +182,9 @@ defmodule Watermelon.Case do
         for %{name: scenario_name, steps: steps, tags: tags} <- Watermelon.Case.scenarios(feature) do
           name =
             ExUnit.Case.register_test(
-              __ENV__,
+              __ENV__.module,
+              __ENV__.file,
+              __ENV__.line,
               :scenario,
               "#{scenario_name}",
               tags
