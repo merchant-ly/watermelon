@@ -227,16 +227,25 @@ defmodule Watermelon.Case do
             {context, cursor + 1}
 
           {_, other} ->
-            raise_error(context.scenario_name, steps, cursor, "Unexpected return value `#{inspect(other)}`")
+            raise_error(
+              context.scenario_name,
+              steps,
+              cursor,
+              "Unexpected return value `#{inspect(other)}`"
+            )
 
           :missing_definition ->
-            raise_error(context.scenario_name, steps, cursor, "Definition for \"#{step.text}\" not found")
+            raise_error(
+              context.scenario_name,
+              steps,
+              cursor,
+              "Definition for \"#{step.text}\" not found"
+            )
         end
       end)
 
     context
   end
-
 
   defp step(module, step, context) do
     case module.apply_step(step, context) do
@@ -258,14 +267,14 @@ defmodule Watermelon.Case do
   defp raise_error(scenario_name, steps, cursor, error_msg, stacktrace \\ []) do
     {previous, [current | next]} =
       steps
-      |> Enum.map(& String.pad_leading(get_step_type(&1), 5, " ") <> " " <> &1.text)
+      |> Enum.map(&(String.pad_leading(get_step_type(&1), 5, " ") <> " " <> &1.text))
       |> Enum.split(cursor)
 
     printable_steps =
       List.flatten([
-        Enum.map(previous, & green("✓") <> "\s\t" <> &1),
+        Enum.map(previous, &(green("✓") <> "\s\t" <> &1)),
         red("✕") <> "\s\t" <> red(current),
-        Enum.map(next, & "⊘\s\t" <> &1)
+        Enum.map(next, &("⊘\s\t" <> &1))
       ])
       |> Enum.join("\n")
 
