@@ -174,7 +174,7 @@ defmodule Watermelon.Case do
         setup context do
           Watermelon.Case.run_steps(
             unquote(Macro.escape(feature.background_steps)),
-            context,
+            Map.put(context, :scenario_name, "Background"),
             unquote(step_modules)
           )
         end
@@ -283,11 +283,17 @@ defmodule Watermelon.Case do
     str = IO.ANSI.reset() <> printable_steps
     delimiter = IO.ANSI.reset() <> "---"
 
+    scenario =
+      case scenario_name do
+        "Background" -> "Background"
+        _ -> "Scenario: #{scenario_name}"
+      end
+
     msg = """
     #{error_msg}
 
     #{delimiter}
-    \s\sScenario: #{scenario_name}
+    #{scenario}
     #{str}
     """
 
