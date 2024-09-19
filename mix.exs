@@ -42,7 +42,7 @@ defmodule Watermelon.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:gherkin, "~> 1.6.0"},
+      {:gherkin, "~> 2.0.0"},
 
       # Documentation
       {:ex_doc, ">= 0.0.0", only: [:dev], runtime: false},
